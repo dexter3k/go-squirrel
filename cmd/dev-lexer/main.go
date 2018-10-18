@@ -11,12 +11,24 @@ const programSource = `
 
 // /= */
 
+.
+.........-><---
+%=
+%
+// ..
+
+foobar
+
 `
 
 func main() {
 	lex := lexer.NewLexer(strings.NewReader(programSource))
 	for {
-		token := lex.Lex()
+		token, err := lex.Lex()
+		if err != nil {
+			fmt.Println(err, token.String)
+			break
+		}
 		if token.Token == 0 {
 			break
 		}

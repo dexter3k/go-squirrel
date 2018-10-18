@@ -2,9 +2,14 @@ package lexer
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 
 	"github.com/SMemsky/go-squirrel/compiler/lexer/tokens"
+)
+
+var (
+	ErrUnknownToken = fmt.Errorf("Unknown token")
 )
 
 var keywords = map[string]tokens.Token{
@@ -72,7 +77,7 @@ func NewLexer(rr io.Reader) *lexer {
 	return l
 }
 
-func (l *lexer) Lex() TokenInfo {
+func (l *lexer) Lex() (TokenInfo, error) {
 	l.next()
 	for ; l.currentChar != 0; l.next() {
 		switch l.currentChar {
@@ -88,43 +93,121 @@ func (l *lexer) Lex() TokenInfo {
 				l.skipBlockComment()
 			case '=':
 				l.next()
-				return TokenInfo{Token: tokens.DivideEqual}
+				return TokenInfo{Token: tokens.DivideEqual}, nil
 			case '>':
 				l.next()
-				return TokenInfo{Token: tokens.AttributeClose}
+				return TokenInfo{Token: tokens.AttributeClose}, nil
 			default:
-				return TokenInfo{Token: tokens.Token('/')}
+				return TokenInfo{Token: tokens.Token('/')}, nil
 			}
 		case '=':
 			if l.nextChar == '=' {
 				l.next()
-				return TokenInfo{Token: tokens.Equal}
+				return TokenInfo{Token: tokens.Equal}, nil
 			}
-			return TokenInfo{Token: tokens.Token('=')}
+			return TokenInfo{Token: tokens.Token('=')}, nil
 		case '<':
 			switch l.nextChar {
 			case '=':
 				l.next()
 				if l.nextChar == '>' {
 					l.next()
-					return TokenInfo{Token: tokens.ThreeWayCompare}
+					return TokenInfo{Token: tokens.ThreeWayCompare}, nil
 				}
-				return TokenInfo{Token: tokens.LessEqual}
+				return TokenInfo{Token: tokens.LessEqual}, nil
 			case '-':
 				l.next()
-				return TokenInfo{Token: tokens.NewSlot}
+				return TokenInfo{Token: tokens.NewSlot}, nil
 			case '<':
 				l.next()
-				return TokenInfo{Token: tokens.ShiftLeft}
+				return TokenInfo{Token: tokens.ShiftLeft}, nil
 			case '/':
 				l.next()
-				return TokenInfo{Token: tokens.AttributeOpen}
+				return TokenInfo{Token: tokens.AttributeOpen}, nil
 			}
-			return TokenInfo{Token: tokens.Token('<')}
+			return TokenInfo{Token: tokens.Token('<')}, nil
+		case '>':
+			if l.nextChar == '=' {
+				l.next()
+				return TokenInfo{Token: tokens.GreaterEqual}, nil
+			} else if l.nextChar == '>' {
+				l.next()
+				if l.nextChar == '>' {
+					l.next()
+					return TokenInfo{Token: tokens.UnsignedShiftRight}, nil
+				}
+				return TokenInfo{Token: tokens.ShiftRight}, nil
+			}
+			return TokenInfo{Token: tokens.Token('<')}, nil
+		case '!':
+			if l.nextChar == '=' {
+				l.next()
+				return TokenInfo{Token: tokens.NotEqual}, nil
+			}
+			return TokenInfo{Token: tokens.Token('!')}, nil
+		case '{', '}', '(', ')', '[', ']':
+		case ';', ',', '?', '^', '~':
+			return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
+		case '.':
+			if l.nextChar != '.' {
+				return TokenInfo{Token: tokens.Token('.')}, nil
+			}
+			l.next()
+			if l.nextChar != '.' {
+				return TokenInfo{String: ".."}, ErrUnknownToken
+			}
+			l.next()
+			return TokenInfo{Token: tokens.VarParams}, nil
+		case '&':
+			if l.nextChar == '&' {
+				l.next()
+				return TokenInfo{Token: tokens.And}, nil
+			}
+			return TokenInfo{Token: tokens.Token('&')}, nil
+		case '|':
+			if l.nextChar == '|' {
+				l.next()
+				return TokenInfo{Token: tokens.Or}, nil
+			}
+			return TokenInfo{Token: tokens.Token('|')}, nil
+		case ':':
+			if l.nextChar == ':' {
+				l.next()
+				return TokenInfo{Token: tokens.DoubleColon}, nil
+			}
+			return TokenInfo{Token: tokens.Token(':')}, nil
+		case '%':
+			if l.nextChar == '=' {
+				l.next()
+				return TokenInfo{Token: tokens.ModuloEqual}, nil
+			}
+			return TokenInfo{Token: tokens.Token('%')}, nil
+		case '+':
+			if l.nextChar == '=' {
+				l.next()
+				return TokenInfo{Token: tokens.PlusEqual}, nil
+			}
+			if l.nextChar == '+' {
+				l.next()
+				return TokenInfo{Token: tokens.Increase}, nil
+			}
+			return TokenInfo{Token: tokens.Token('+')}, nil
+		case '-':
+			if l.nextChar == '=' {
+				l.next()
+				return TokenInfo{Token: tokens.MinusEqual}, nil
+			}
+			if l.nextChar == '-' {
+				l.next()
+				return TokenInfo{Token: tokens.Decrease}, nil
+			}
+			return TokenInfo{Token: tokens.Token('-')}, nil
+		default:
+			return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
 		}
 	}
 
-	return TokenInfo{}
+	return TokenInfo{}, nil
 }
 
 func (l *lexer) next() {
