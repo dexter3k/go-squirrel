@@ -171,7 +171,7 @@ func (l *lexer) Lex() (TokenInfo, error) {
 			return TokenInfo{Token: tokens.Token('@')}, nil
 		case '"', '\'':
 			return l.readString(l.currentChar, false)
-		case '{', '}', '(', ')', '[', ']':
+		case '{', '}', '(', ')', '[', ']': fallthrough
 		case ';', ',', '?', '^', '~':
 			return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
 		case '.':
@@ -333,8 +333,7 @@ func (l *lexer) readString(delimiter rune, verbatim bool) (TokenInfo, error) {
 			l.next()
 		}
 
-		l.next()
-		if verbatim && l.currentChar == '"' {
+		if verbatim && l.nextChar == '"' {
 			builder.WriteRune('"')
 			l.next()
 		}
