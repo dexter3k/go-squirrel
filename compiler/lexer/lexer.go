@@ -78,6 +78,10 @@ type TokenInfo struct {
 	Column uint
 }
 
+type Lexer interface {
+	Lex() (TokenInfo, error)
+}
+
 type lexer struct {
 	source *bufio.Reader
 
@@ -99,8 +103,10 @@ func (l *lexer) Lex() (TokenInfo, error) {
 	l.next()
 	for ; l.currentChar != 0; l.next() {
 		switch l.currentChar {
-		case '\t', '\r', ' ', '\n':
+		case '\t', '\r', ' ':
 			break
+		case '\n':
+			return TokenInfo{Token: tokens.Token('\n')}, nil
 		case '#':
 			l.skipLineComment()
 		case '/':

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/SMemsky/go-squirrel/compiler"
 	"github.com/SMemsky/go-squirrel/compiler/lexer"
 )
 
@@ -14,6 +15,12 @@ print("Hello, world!")
 `
 
 func main() {
+	compiler := compiler.NewCompiler(strings.NewReader(programSource))
+	if compiler != nil {
+		fmt.Println("Compiler ok")
+	}
+	compiler.Compile()
+
 	lex := lexer.NewLexer(strings.NewReader(programSource))
 	for {
 		token, err := lex.Lex()
