@@ -4,12 +4,16 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"strconv"
+	"strings"
 
 	"github.com/SMemsky/go-squirrel/compiler/lexer/tokens"
 )
 
 var (
 	ErrUnknownToken = fmt.Errorf("Unknown token")
+	ErrHexOverflow  = fmt.Errorf("Hexadecimal number is too big")
+	ErrOctOverflow  = fmt.Errorf("Octal number is too big")
 )
 
 var keywords = map[string]tokens.Token{
@@ -53,8 +57,10 @@ var keywords = map[string]tokens.Token{
 }
 
 type TokenInfo struct {
-	Token  tokens.Token
-	String string
+	Token   tokens.Token
+	String  string
+	Integer uint64
+	Float   float64
 
 	Line   uint
 	Column uint
@@ -203,6 +209,9 @@ func (l *lexer) Lex() (TokenInfo, error) {
 			}
 			return TokenInfo{Token: tokens.Token('-')}, nil
 		default:
+			if isDigit(l.currentChar) {
+				return l.readNumber()
+			}
 			return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
 		}
 	}
@@ -238,4 +247,69 @@ func (l *lexer) skipBlockComment() {
 			}
 		}
 	}
+}
+
+// Integer, Hex, Octal, Float, Scientific
+// Hex format:
+// 0xFFFFFF, 0Xfffffff, 0xffffff, 0XFFFFFF
+// Octal format:
+// 07777777
+// Scientific format:
+// . e E + -
+func (l *lexer) readNumber() (TokenInfo, error) {
+	var builder strings.Builder
+
+	if l.currentChar == '0' && (l.nextChar == 'x' || l.nextChar == 'X') {
+		l.next()
+
+		for i := 0; isHex(l.nextChar); i++ {
+			if i == 2*8 { // max u64 hex value takes 16 chars
+				return TokenInfo{
+					Token:  tokens.Integer,
+					String: builder.String(),
+				}, ErrHexOverflow
+			}
+			l.next()
+			builder.WriteRune(l.currentChar)
+		}
+		value, err := strconv.ParseUint(builder.String(), 16, 64)
+		if err != nil {
+			return TokenInfo{
+				Token:  tokens.Integer,
+				String: builder.String(),
+			}, ErrHexOverflow
+		}
+		return TokenInfo{
+			Token:   tokens.Integer,
+			String:  builder.String(),
+			Integer: value,
+		}, nil
+	} else if l.currentChar == '0' && isOctal(l.nextChar) {
+		for i := 0; isOctal(l.nextChar); i++ {
+			if i == 22 { // max u64 oct value takes 22 chars
+				return TokenInfo{
+					Token:  tokens.Integer,
+					String: builder.String(),
+				}, ErrOctOverflow
+			}
+			l.next()
+			builder.WriteRune(l.currentChar)
+		}
+		value, err := strconv.ParseUint(builder.String(), 8, 64)
+		if err != nil {
+			return TokenInfo{
+				Token:  tokens.Integer,
+				String: builder.String(),
+			}, ErrOctOverflow
+		}
+		return TokenInfo{
+			Token:   tokens.Integer,
+			String:  builder.String(),
+			Integer: value,
+		}, nil
+	} else {
+		panic("")
+	}
+
+	return TokenInfo{}, nil
 }
