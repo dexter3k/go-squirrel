@@ -19,8 +19,18 @@ const programSource = `
 
 foobar
 
+100
+
 07776x
-0xfffffffffffffffffffff
+0x100
+
+0.2000001
+100.0
+100.
+
+1.0e309
+1e300
+1e+10
 
 `
 
@@ -35,6 +45,6 @@ func main() {
 		if token.Token == 0 {
 			break
 		}
-		fmt.Println(uint(token.Token), token.String)
+		fmt.Println(uint(token.Token), token.String, token.Integer, token.Float)
 	}
 }

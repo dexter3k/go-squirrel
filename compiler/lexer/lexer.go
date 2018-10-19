@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 
@@ -14,6 +15,8 @@ var (
 	ErrUnknownToken = fmt.Errorf("Unknown token")
 	ErrHexOverflow  = fmt.Errorf("Hexadecimal number is too big")
 	ErrOctOverflow  = fmt.Errorf("Octal number is too big")
+	ErrDecOverflow  = fmt.Errorf("Decimal number is too big")
+	ErrFloatFormat  = fmt.Errorf("Malformed floating point value")
 )
 
 var keywords = map[string]tokens.Token{
@@ -256,6 +259,7 @@ func (l *lexer) skipBlockComment() {
 // 07777777
 // Scientific format:
 // . e E + -
+// TODO: This function is a mess
 func (l *lexer) readNumber() (TokenInfo, error) {
 	var builder strings.Builder
 
@@ -308,7 +312,99 @@ func (l *lexer) readNumber() (TokenInfo, error) {
 			Integer: value,
 		}, nil
 	} else {
-		panic("")
+		// Read int/float first and then parse integer exponent if present
+		builder.WriteRune(l.currentChar)
+
+		var hasDot bool
+		for isDigit(l.nextChar) || l.nextChar == '.' {
+			// Detect double point
+			if l.nextChar == '.' {
+				if hasDot {
+					return TokenInfo{
+						Token:  tokens.Integer,
+						String: builder.String(),
+					}, ErrFloatFormat
+				} else {
+					hasDot = true
+				}
+			}
+
+			l.next()
+			builder.WriteRune(l.currentChar)
+		}
+
+		// Optionally read exponent
+		if isExponent(l.nextChar) {
+			l.next()
+
+			sign := l.nextChar == '-'
+			if l.nextChar == '+' || l.nextChar == '-' {
+				l.next()
+			}
+
+			var expBuilder strings.Builder
+			for isDigit(l.nextChar) {
+				l.next()
+				expBuilder.WriteRune(l.currentChar)
+			}
+			if l.nextChar == '.' || isExponent(l.nextChar) {
+				return TokenInfo{
+					Token: tokens.Float,
+				}, ErrFloatFormat
+			}
+
+			value, err := strconv.ParseFloat(builder.String(), 10)
+			if err != nil {
+				return TokenInfo{
+					Token:  tokens.Float,
+					String: builder.String(),
+				}, ErrFloatFormat
+			}
+
+			exponent, err := strconv.ParseUint(expBuilder.String(), 10, 64)
+			if err != nil {
+				return TokenInfo{
+					Token: tokens.Float,
+				}, ErrFloatFormat
+			}
+			if sign {
+				exponent = -exponent
+			}
+
+			return TokenInfo{
+				Token:  tokens.Float,
+				String: builder.String(),
+				Float:  value * math.Pow10(int(exponent)),
+			}, nil
+		}
+
+		if hasDot {
+			value, err := strconv.ParseFloat(builder.String(), 10)
+			if err != nil {
+				return TokenInfo{
+					Token:  tokens.Float,
+					String: builder.String(),
+				}, ErrFloatFormat
+			}
+			return TokenInfo{
+				Token:  tokens.Float,
+				String: builder.String(),
+				Float:  value,
+			}, nil
+		}
+
+		value, err := strconv.ParseUint(builder.String(), 10, 64)
+		if err != nil {
+			return TokenInfo{
+				Token:  tokens.Integer,
+				String: builder.String(),
+			}, ErrDecOverflow
+		}
+		return TokenInfo{
+			Token:   tokens.Integer,
+			String:  builder.String(),
+			Integer: value,
+		}, nil
 	}
 
 	return TokenInfo{}, nil
