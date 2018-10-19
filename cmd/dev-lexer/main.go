@@ -32,6 +32,13 @@ foobar
 1e300
 1e+10
 
+foobar
+while
+true
+false
+__FILE__
+__LINE__
+
 `
 
 func main() {

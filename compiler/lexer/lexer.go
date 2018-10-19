@@ -55,8 +55,8 @@ var keywords = map[string]tokens.Token{
 	"static":      tokens.Static,
 	"enum":        tokens.Enum,
 	"const":       tokens.Const,
-	"__FILE__":    tokens.Line,
-	"__LINE__":    tokens.File,
+	"__FILE__":    tokens.File,
+	"__LINE__":    tokens.Line,
 }
 
 type TokenInfo struct {
@@ -214,8 +214,11 @@ func (l *lexer) Lex() (TokenInfo, error) {
 		default:
 			if isDigit(l.currentChar) {
 				return l.readNumber()
+			} else if isAlpha(l.currentChar) || l.currentChar == '_' {
+				return l.readIdentifier()
 			}
-			return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
+			panic("")
+			// return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
 		}
 	}
 
@@ -250,6 +253,20 @@ func (l *lexer) skipBlockComment() {
 			}
 		}
 	}
+}
+
+func (l *lexer) readIdentifier() (TokenInfo, error) {
+	var builder strings.Builder
+	builder.WriteRune(l.currentChar)
+	for isAlnum(l.nextChar) || l.nextChar == '_' {
+		l.next()
+		builder.WriteRune(l.currentChar)
+	}
+
+	if token, present := keywords[builder.String()]; present {
+		return TokenInfo{Token: token, String: builder.String()}, nil
+	}
+	return TokenInfo{Token: tokens.Identifier, String: builder.String()}, nil
 }
 
 // Integer, Hex, Octal, Float, Scientific
