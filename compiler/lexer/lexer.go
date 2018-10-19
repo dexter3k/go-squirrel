@@ -171,7 +171,8 @@ func (l *lexer) Lex() (TokenInfo, error) {
 			return TokenInfo{Token: tokens.Token('@')}, nil
 		case '"', '\'':
 			return l.readString(l.currentChar, false)
-		case '{', '}', '(', ')', '[', ']': fallthrough
+		case '{', '}', '(', ')', '[', ']':
+			fallthrough
 		case ';', ',', '?', '^', '~':
 			return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
 		case '.':
