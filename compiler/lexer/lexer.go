@@ -12,11 +12,14 @@ import (
 )
 
 var (
-	ErrUnknownToken = fmt.Errorf("Unknown token")
-	ErrHexOverflow  = fmt.Errorf("Hexadecimal number is too big")
-	ErrOctOverflow  = fmt.Errorf("Octal number is too big")
-	ErrDecOverflow  = fmt.Errorf("Decimal number is too big")
-	ErrFloatFormat  = fmt.Errorf("Malformed floating point value")
+	ErrUnknownToken     = fmt.Errorf("Unknown token")
+	ErrHexOverflow      = fmt.Errorf("Hexadecimal number is too big")
+	ErrOctOverflow      = fmt.Errorf("Octal number is too big")
+	ErrDecOverflow      = fmt.Errorf("Decimal number is too big")
+	ErrFloatFormat      = fmt.Errorf("Malformed floating point value")
+	ErrUnfinishedString = fmt.Errorf("String is left unterminated")
+	ErrBadEscape        = fmt.Errorf("Unknown escape character")
+	ErrBadCharacter     = fmt.Errorf("Unknown character")
 )
 
 var keywords = map[string]tokens.Token{
@@ -154,6 +157,14 @@ func (l *lexer) Lex() (TokenInfo, error) {
 				return TokenInfo{Token: tokens.NotEqual}, nil
 			}
 			return TokenInfo{Token: tokens.Token('!')}, nil
+		case '@':
+			if l.nextChar == '"' {
+				l.next()
+				return l.readString(l.currentChar, true)
+			}
+			return TokenInfo{Token: tokens.Token('@')}, nil
+		case '"', '\'':
+			return l.readString(l.currentChar, false)
 		case '{', '}', '(', ')', '[', ']':
 		case ';', ',', '?', '^', '~':
 			return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
@@ -253,6 +264,97 @@ func (l *lexer) skipBlockComment() {
 			}
 		}
 	}
+}
+
+func (l *lexer) readString(delimiter rune, verbatim bool) (TokenInfo, error) {
+	l.next()
+	var builder strings.Builder
+	for {
+		for l.currentChar != delimiter {
+			switch l.currentChar {
+			case 0:
+				return TokenInfo{
+					Token:  tokens.StringLiteral,
+					String: builder.String(),
+				}, ErrUnfinishedString
+			case '\n':
+				if !verbatim {
+					return TokenInfo{
+						Token:  tokens.StringLiteral,
+						String: builder.String(),
+					}, ErrUnfinishedString
+				}
+				builder.WriteRune('\n')
+			case '\\':
+				if verbatim {
+					builder.WriteRune('\\')
+					break
+				}
+				l.next()
+				switch l.currentChar {
+				case 't':
+					builder.WriteRune('\t')
+				case 'a':
+					builder.WriteRune('\a')
+				case 'b':
+					builder.WriteRune('\b')
+				case 'n':
+					builder.WriteRune('\n')
+				case 'r':
+					builder.WriteRune('\r')
+				case 'v':
+					builder.WriteRune('\v')
+				case 'f':
+					builder.WriteRune('\f')
+				case '0':
+					builder.WriteRune(0)
+				case '\\':
+					builder.WriteRune('\\')
+				case '"':
+					builder.WriteRune('"')
+				case '\'':
+					builder.WriteRune('\'')
+				default:
+					return TokenInfo{
+						Token:  tokens.StringLiteral,
+						String: builder.String(),
+					}, ErrBadEscape
+				}
+			default:
+				builder.WriteRune(l.currentChar)
+			}
+
+			l.next()
+		}
+
+		l.next()
+		if verbatim && l.currentChar == '"' {
+			builder.WriteRune('"')
+			l.next()
+		}
+		break
+	}
+
+	if delimiter == '\'' {
+		if builder.Len() != 1 {
+			return TokenInfo{
+				Token:  tokens.Integer,
+				String: builder.String(),
+			}, ErrBadCharacter
+		}
+		var first rune
+		for _, c := range builder.String() {
+			first = c
+			break
+		}
+		return TokenInfo{
+			Token:   tokens.Integer,
+			String:  builder.String(),
+			Integer: uint64(first),
+		}, nil
+	}
+
+	return TokenInfo{Token: tokens.StringLiteral, String: builder.String()}, nil
 }
 
 func (l *lexer) readIdentifier() (TokenInfo, error) {
