@@ -1,3 +1,9 @@
+/*
+
+BIG HUGE TODO HERE: WRITE TESTS
+
+*/
+
 package lexer
 
 import (
