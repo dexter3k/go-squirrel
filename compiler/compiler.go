@@ -53,6 +53,10 @@ func (c *compiler) lex() {
 }
 
 func (c *compiler) statement() {
+	c.expression()
+}
+
+func (c *compiler) expression() {
 	c.prefixedExpression()
 }
 
@@ -65,21 +69,27 @@ func (c *compiler) prefixedExpression() {
 }
 
 func (c *compiler) factor() {
-	if c.token == tokens.Identifier {
+	switch c.token {
+	case tokens.Identifier:
+		c.lex()
+	case tokens.StringLiteral:
+		c.lex()
+	case tokens.Integer:
+		c.lex()
+	case tokens.Float:
 		c.lex()
 	}
 }
 
 func (c *compiler) functionCallArgs() {
 	for c.token != ')' {
-		// c.expression()
-		// if c.token == ',' {
-		//     c.lex()
-		//     if c.token == ')' {
-		//         panic(ErrExpectArgument)
-		//     }
-		// }
-		c.lex()
+		c.expression()
+		if c.token == ',' {
+		    c.lex()
+		    if c.token == ')' {
+		        panic(ErrExpectArgument)
+		    }
+		}
 	}
 	c.lex()
 }
