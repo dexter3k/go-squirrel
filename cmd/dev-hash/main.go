@@ -7,6 +7,5 @@ import (
 )
 
 func main() {
-	foo := "FOO"
-	fmt.Println(sq.HashPointer(&foo))
+	fmt.Println(sq.HashPointer(100))
 }

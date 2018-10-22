@@ -10,7 +10,7 @@ import (
 
 const programSource = `
 
-print("Hello, world!", "Hello!", 125, foobar("Kek"))
+print("Hello, world!"), print("Comma!")
 
 `
 

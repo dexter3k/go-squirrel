@@ -53,7 +53,18 @@ func (c *compiler) lex() {
 }
 
 func (c *compiler) statement() {
+	c.commaExpression()
+	// pop result of unused expression
+}
+
+func (c *compiler) commaExpression() {
 	c.expression()
+	for c.token == ',' {
+		c.lex()
+		c.expression()
+		// pop result of last expression
+	}
+	// result of first expression always stays on stack and gets returned
 }
 
 func (c *compiler) expression() {
@@ -62,9 +73,14 @@ func (c *compiler) expression() {
 
 func (c *compiler) prefixedExpression() {
 	c.factor()
-	if c.token == '(' {
-		c.lex()
-		c.functionCallArgs()
+	for {
+		switch c.token {
+		case '(':
+			c.lex()
+			c.functionCallArgs()
+		default:
+			return
+		}
 	}
 }
 
@@ -78,6 +94,8 @@ func (c *compiler) factor() {
 		c.lex()
 	case tokens.Float:
 		c.lex()
+	default:
+		panic(ErrExpectExpression)
 	}
 }
 
@@ -85,10 +103,10 @@ func (c *compiler) functionCallArgs() {
 	for c.token != ')' {
 		c.expression()
 		if c.token == ',' {
-		    c.lex()
-		    if c.token == ')' {
-		        panic(ErrExpectArgument)
-		    }
+			c.lex()
+			if c.token == ')' {
+				panic(ErrExpectArgument)
+			}
 		}
 	}
 	c.lex()
