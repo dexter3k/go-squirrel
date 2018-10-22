@@ -32,5 +32,5 @@ func HashBool(source bool) Hash {
 }
 
 func HashPointer(source interface{}) Hash {
-	return Hash(uintptr(unsafe.Pointer(&source)))
+	return Hash(uintptr(unsafe.Pointer(&source))) >> 3
 }
