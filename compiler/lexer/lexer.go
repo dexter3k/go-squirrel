@@ -95,22 +95,24 @@ func NewLexer(rr io.Reader) *lexer {
 	}
 
 	l.next()
+	l.next()
 
 	return l
 }
 
 func (l *lexer) Lex() (TokenInfo, error) {
-	l.next()
-	for ; l.currentChar != 0; l.next() {
+	for l.currentChar != 0 {
 		switch l.currentChar {
 		case '\t', '\r', ' ':
-			break
+			l.next()
 		case '\n':
+			l.next()
 			return TokenInfo{Token: tokens.Token('\n')}, nil
 		case '#':
 			l.skipLineComment()
 		case '/':
-			switch l.nextChar {
+			l.next()
+			switch l.currentChar {
 			case '/':
 				l.skipLineComment()
 			case '*':
@@ -125,16 +127,18 @@ func (l *lexer) Lex() (TokenInfo, error) {
 				return TokenInfo{Token: tokens.Token('/')}, nil
 			}
 		case '=':
-			if l.nextChar == '=' {
+			l.next()
+			if l.currentChar == '=' {
 				l.next()
 				return TokenInfo{Token: tokens.Equal}, nil
 			}
 			return TokenInfo{Token: tokens.Token('=')}, nil
 		case '<':
-			switch l.nextChar {
+			l.next()
+			switch l.currentChar {
 			case '=':
 				l.next()
-				if l.nextChar == '>' {
+				if l.currentChar == '>' {
 					l.next()
 					return TokenInfo{Token: tokens.ThreeWayCompare}, nil
 				}
@@ -151,12 +155,13 @@ func (l *lexer) Lex() (TokenInfo, error) {
 			}
 			return TokenInfo{Token: tokens.Token('<')}, nil
 		case '>':
-			if l.nextChar == '=' {
+			l.next()
+			if l.currentChar == '=' {
 				l.next()
 				return TokenInfo{Token: tokens.GreaterEqual}, nil
-			} else if l.nextChar == '>' {
+			} else if l.currentChar == '>' {
 				l.next()
-				if l.nextChar == '>' {
+				if l.currentChar == '>' {
 					l.next()
 					return TokenInfo{Token: tokens.UnsignedShiftRight}, nil
 				}
@@ -164,73 +169,88 @@ func (l *lexer) Lex() (TokenInfo, error) {
 			}
 			return TokenInfo{Token: tokens.Token('<')}, nil
 		case '!':
-			if l.nextChar == '=' {
+			l.next()
+			if l.currentChar == '=' {
 				l.next()
 				return TokenInfo{Token: tokens.NotEqual}, nil
 			}
 			return TokenInfo{Token: tokens.Token('!')}, nil
 		case '@':
-			if l.nextChar == '"' {
+			l.next()
+			if l.currentChar == '"' {
 				l.next()
-				return l.readString(l.currentChar, true)
+				return l.readString('"', true)
 			}
 			return TokenInfo{Token: tokens.Token('@')}, nil
-		case '"', '\'':
-			return l.readString(l.currentChar, false)
+		case '"':
+			l.next()
+			return l.readString('"', false)
+		case '\'':
+			l.next()
+			return l.readString('\'', false)
 		case '{', '}', '(', ')', '[', ']':
 			fallthrough
 		case ';', ',', '?', '^', '~':
-			return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
+			ch := l.currentChar
+			l.next()
+			return TokenInfo{Token: tokens.Token(ch)}, nil
 		case '.':
-			if l.nextChar != '.' {
+			l.next()
+			if l.currentChar != '.' {
 				return TokenInfo{Token: tokens.Token('.')}, nil
 			}
 			l.next()
-			if l.nextChar != '.' {
+			if l.currentChar != '.' {
 				return TokenInfo{String: ".."}, ErrUnknownToken
 			}
 			l.next()
 			return TokenInfo{Token: tokens.VarParams}, nil
 		case '&':
-			if l.nextChar == '&' {
+			l.next()
+			if l.currentChar == '&' {
 				l.next()
 				return TokenInfo{Token: tokens.And}, nil
 			}
 			return TokenInfo{Token: tokens.Token('&')}, nil
 		case '|':
-			if l.nextChar == '|' {
+			l.next()
+			if l.currentChar == '|' {
 				l.next()
 				return TokenInfo{Token: tokens.Or}, nil
 			}
 			return TokenInfo{Token: tokens.Token('|')}, nil
 		case ':':
-			if l.nextChar == ':' {
+			l.next()
+			if l.currentChar == ':' {
 				l.next()
 				return TokenInfo{Token: tokens.DoubleColon}, nil
 			}
 			return TokenInfo{Token: tokens.Token(':')}, nil
 		case '%':
-			if l.nextChar == '=' {
+			l.next()
+			if l.currentChar == '=' {
 				l.next()
 				return TokenInfo{Token: tokens.ModuloEqual}, nil
 			}
 			return TokenInfo{Token: tokens.Token('%')}, nil
 		case '+':
-			if l.nextChar == '=' {
+			l.next()
+			if l.currentChar == '=' {
 				l.next()
 				return TokenInfo{Token: tokens.PlusEqual}, nil
 			}
-			if l.nextChar == '+' {
+			if l.currentChar == '+' {
 				l.next()
 				return TokenInfo{Token: tokens.Increase}, nil
 			}
 			return TokenInfo{Token: tokens.Token('+')}, nil
 		case '-':
-			if l.nextChar == '=' {
+			l.next()
+			if l.currentChar == '=' {
 				l.next()
 				return TokenInfo{Token: tokens.MinusEqual}, nil
 			}
-			if l.nextChar == '-' {
+			if l.currentChar == '-' {
 				l.next()
 				return TokenInfo{Token: tokens.Decrease}, nil
 			}
@@ -242,7 +262,6 @@ func (l *lexer) Lex() (TokenInfo, error) {
 				return l.readIdentifier()
 			}
 			panic("")
-			// return TokenInfo{Token: tokens.Token(l.currentChar)}, nil
 		}
 	}
 
@@ -264,26 +283,19 @@ func (l *lexer) skipLineComment() {
 }
 
 func (l *lexer) skipBlockComment() {
-	l.next()
-	for {
+	// l.next() // slash is already skipped
+	l.next() // *
+	for l.currentChar != '*' && l.nextChar != '/' && l.currentChar != 0 {
 		l.next()
-		switch l.currentChar {
-		case 0:
-			return
-		case '*':
-			if l.nextChar == '/' {
-				l.next()
-				return
-			}
-		}
 	}
+	l.next() // *
+	l.next() // /
 }
 
 func (l *lexer) readString(delimiter rune, verbatim bool) (TokenInfo, error) {
-	l.next()
 	var builder strings.Builder
 	for {
-		for l.currentChar != delimiter {
+		for ; l.currentChar != delimiter; l.next() {
 			switch l.currentChar {
 			case 0:
 				return TokenInfo{
@@ -301,7 +313,7 @@ func (l *lexer) readString(delimiter rune, verbatim bool) (TokenInfo, error) {
 			case '\\':
 				if verbatim {
 					builder.WriteRune('\\')
-					break
+					continue
 				}
 				l.next()
 				switch l.currentChar {
@@ -336,16 +348,17 @@ func (l *lexer) readString(delimiter rune, verbatim bool) (TokenInfo, error) {
 			default:
 				builder.WriteRune(l.currentChar)
 			}
-
-			l.next()
 		}
 
 		if verbatim && l.nextChar == '"' {
 			builder.WriteRune('"')
 			l.next()
+		} else {
+			break
 		}
-		break
 	}
+
+	l.next() // skip delimiter
 
 	if delimiter == '\'' {
 		if builder.Len() != 1 {
@@ -371,10 +384,9 @@ func (l *lexer) readString(delimiter rune, verbatim bool) (TokenInfo, error) {
 
 func (l *lexer) readIdentifier() (TokenInfo, error) {
 	var builder strings.Builder
-	builder.WriteRune(l.currentChar)
-	for isAlnum(l.nextChar) || l.nextChar == '_' {
-		l.next()
+	for isAlnum(l.currentChar) || l.currentChar == '_' {
 		builder.WriteRune(l.currentChar)
+		l.next()
 	}
 
 	if token, present := keywords[builder.String()]; present {
@@ -391,152 +403,176 @@ func (l *lexer) readIdentifier() (TokenInfo, error) {
 // Scientific format:
 // . e E + -
 // TODO: This function is a mess
-func (l *lexer) readNumber() (TokenInfo, error) {
+func (l *lexer) readHexPart() (string, error) {
 	var builder strings.Builder
 
+	for i := 0; isHex(l.currentChar); i++ {
+		if i == 2*8 { // max u64 hex value takes 16 chars
+			return builder.String(), ErrHexOverflow
+		}
+
+		builder.WriteRune(l.currentChar)
+		l.next()
+	}
+
+	return builder.String(), nil
+}
+
+func (l *lexer) readOctPart() (string, error) {
+	var builder strings.Builder
+
+	for i := 0; isOctal(l.currentChar); i++ {
+		if i == 3*8 { // max u64 hex value takes 22 chars
+			return builder.String(), ErrOctOverflow
+		}
+
+		builder.WriteRune(l.currentChar)
+		l.next()
+	}
+
+	return builder.String(), nil
+}
+
+func (l *lexer) readNumber() (TokenInfo, error) {
 	if l.currentChar == '0' && (l.nextChar == 'x' || l.nextChar == 'X') {
 		l.next()
+		l.next()
 
-		for i := 0; isHex(l.nextChar); i++ {
-			if i == 2*8 { // max u64 hex value takes 16 chars
-				return TokenInfo{
-					Token:  tokens.Integer,
-					String: builder.String(),
-				}, ErrHexOverflow
-			}
-			l.next()
-			builder.WriteRune(l.currentChar)
-		}
-		value, err := strconv.ParseUint(builder.String(), 16, 64)
+		str, err := l.readHexPart()
 		if err != nil {
 			return TokenInfo{
 				Token:  tokens.Integer,
-				String: builder.String(),
-			}, ErrHexOverflow
+				String: str,
+			}, err
 		}
-		return TokenInfo{
-			Token:   tokens.Integer,
-			String:  builder.String(),
-			Integer: value,
-		}, nil
-	} else if l.currentChar == '0' && isOctal(l.nextChar) {
-		for i := 0; isOctal(l.nextChar); i++ {
-			if i == 22 { // max u64 oct value takes 22 chars
-				return TokenInfo{
-					Token:  tokens.Integer,
-					String: builder.String(),
-				}, ErrOctOverflow
-			}
-			l.next()
-			builder.WriteRune(l.currentChar)
-		}
-		value, err := strconv.ParseUint(builder.String(), 8, 64)
+
+		val, err := strconv.ParseUint(str, 16, 64)
 		if err != nil {
-			return TokenInfo{
-				Token:  tokens.Integer,
-				String: builder.String(),
-			}, ErrOctOverflow
+			panic(err)
 		}
+
 		return TokenInfo{
 			Token:   tokens.Integer,
-			String:  builder.String(),
-			Integer: value,
-		}, nil
-	} else {
-		// Read int/float first and then parse integer exponent if present
-		builder.WriteRune(l.currentChar)
-
-		var hasDot bool
-		for isDigit(l.nextChar) || l.nextChar == '.' {
-			// Detect double point
-			if l.nextChar == '.' {
-				if hasDot {
-					return TokenInfo{
-						Token:  tokens.Integer,
-						String: builder.String(),
-					}, ErrFloatFormat
-				} else {
-					hasDot = true
-				}
-			}
-
-			l.next()
-			builder.WriteRune(l.currentChar)
-		}
-
-		// Optionally read exponent
-		if isExponent(l.nextChar) {
-			l.next()
-
-			sign := l.nextChar == '-'
-			if l.nextChar == '+' || l.nextChar == '-' {
-				l.next()
-			}
-
-			var expBuilder strings.Builder
-			for isDigit(l.nextChar) {
-				l.next()
-				expBuilder.WriteRune(l.currentChar)
-			}
-			if l.nextChar == '.' || isExponent(l.nextChar) {
-				return TokenInfo{
-					Token: tokens.Float,
-				}, ErrFloatFormat
-			}
-
-			value, err := strconv.ParseFloat(builder.String(), 10)
-			if err != nil {
-				return TokenInfo{
-					Token:  tokens.Float,
-					String: builder.String(),
-				}, ErrFloatFormat
-			}
-
-			exponent, err := strconv.ParseUint(expBuilder.String(), 10, 64)
-			if err != nil {
-				return TokenInfo{
-					Token: tokens.Float,
-				}, ErrFloatFormat
-			}
-			if sign {
-				exponent = -exponent
-			}
-
-			return TokenInfo{
-				Token:  tokens.Float,
-				String: builder.String(),
-				Float:  value * math.Pow10(int(exponent)),
-			}, nil
-		}
-
-		if hasDot {
-			value, err := strconv.ParseFloat(builder.String(), 10)
-			if err != nil {
-				return TokenInfo{
-					Token:  tokens.Float,
-					String: builder.String(),
-				}, ErrFloatFormat
-			}
-			return TokenInfo{
-				Token:  tokens.Float,
-				String: builder.String(),
-				Float:  value,
-			}, nil
-		}
-
-		value, err := strconv.ParseUint(builder.String(), 10, 64)
-		if err != nil {
-			return TokenInfo{
-				Token:  tokens.Integer,
-				String: builder.String(),
-			}, ErrDecOverflow
-		}
-		return TokenInfo{
-			Token:   tokens.Integer,
-			String:  builder.String(),
-			Integer: value,
+			String:  str,
+			Integer: val,
 		}, nil
 	}
 
-	return TokenInfo{}, nil
+	if l.currentChar == '0' && isOctal(l.nextChar) {
+		l.next()
+
+		str, err := l.readOctPart()
+		if err != nil {
+			return TokenInfo{
+				Token:  tokens.Integer,
+				String: str,
+			}, err
+		}
+
+		val, err := strconv.ParseUint(str, 8, 64)
+		if err != nil {
+			panic(err)
+		}
+
+		return TokenInfo{
+			Token:   tokens.Integer,
+			String:  str,
+			Integer: val,
+		}, nil
+	}
+
+	// Read int/float first and then parse integer exponent if present
+
+	var builder strings.Builder
+	builder.WriteRune(l.currentChar)
+	l.next()
+
+	var hasDot bool
+	for isDigit(l.currentChar) || l.currentChar == '.' {
+		// Detect double point
+		if l.currentChar == '.' {
+			if hasDot {
+				return TokenInfo{
+					Token:  tokens.Integer,
+					String: builder.String(),
+				}, ErrFloatFormat
+			} else {
+				hasDot = true
+			}
+		}
+
+		builder.WriteRune(l.currentChar)
+		l.next()
+	}
+
+	// If we have a dot, then parse float right away
+	var float float64
+	if hasDot {
+		var err error
+		float, err = strconv.ParseFloat(builder.String(), 10)
+		if err != nil {
+			return TokenInfo{
+				Token:  tokens.Float,
+				String: builder.String(),
+			}, ErrFloatFormat
+		}
+	}
+
+	// Optionally read exponent
+	if isExponent(l.currentChar) {
+		l.next()
+
+		sign := l.currentChar == '-'
+		if l.currentChar == '+' || l.currentChar == '-' {
+			l.next()
+		}
+
+		var expBuilder strings.Builder
+		for isDigit(l.currentChar) {
+			expBuilder.WriteRune(l.currentChar)
+			l.next()
+		}
+		if l.currentChar == '.' || isExponent(l.currentChar) {
+			return TokenInfo{
+				Token: tokens.Float,
+			}, ErrFloatFormat
+		}
+
+		exp, err := strconv.ParseUint(expBuilder.String(), 10, 64)
+		if err != nil {
+			return TokenInfo{
+				Token: tokens.Float,
+			}, ErrFloatFormat
+		}
+		if sign {
+			exp = -exp
+		}
+
+		return TokenInfo{
+			Token:  tokens.Float,
+			String: builder.String(),
+			Float:  float * math.Pow10(int(int64(exp))),
+		}, nil
+	}
+
+	if hasDot {
+		return TokenInfo{
+			Token:  tokens.Float,
+			String: builder.String(),
+			Float:  float,
+		}, nil
+	}
+
+	value, err := strconv.ParseUint(builder.String(), 10, 64)
+	if err != nil {
+		return TokenInfo{
+			Token:  tokens.Integer,
+			String: builder.String(),
+		}, ErrDecOverflow
+	}
+	return TokenInfo{
+		Token:   tokens.Integer,
+		String:  builder.String(),
+		Integer: value,
+	}, nil
 }
