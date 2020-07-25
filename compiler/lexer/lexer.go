@@ -285,7 +285,7 @@ func (l *lexer) skipLineComment() {
 func (l *lexer) skipBlockComment() {
 	// l.next() // slash is already skipped
 	l.next() // *
-	for l.currentChar != '*' && l.nextChar != '/' && l.currentChar != 0 {
+	for (l.currentChar != '*' || l.nextChar != '/') && l.currentChar != 0 {
 		l.next()
 	}
 	l.next() // *
