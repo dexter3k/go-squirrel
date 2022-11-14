@@ -65,6 +65,9 @@ const programSource = `
 'b'
 '\t'
 
+
+</ flippy = 10, second = [1, 2, 3] /> // attrs
+
 `
 
 func main() {
@@ -72,12 +75,14 @@ func main() {
 	for {
 		token, err := lex.Lex()
 		if err != nil {
-			fmt.Println(err, token.String)
+			fmt.Printf("%s, %q\n", err, token.String)
 			break
 		}
+
 		if token.Token == 0 {
 			break
 		}
-		fmt.Println(uint(token.Token), token.String, token.Integer, token.Float)
+
+		fmt.Printf("type=%3d, s=%q, i=%d, f=%f\n", uint(token.Token), token.String, token.Integer, token.Float)
 	}
 }

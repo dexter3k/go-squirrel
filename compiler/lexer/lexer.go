@@ -1,9 +1,3 @@
-/*
-
-BIG HUGE TODO HERE: WRITE TESTS
-
-*/
-
 package lexer
 
 import (
@@ -261,7 +255,11 @@ func (l *lexer) Lex() (TokenInfo, error) {
 			} else if isAlpha(l.currentChar) || l.currentChar == '_' {
 				return l.readIdentifier()
 			}
-			panic("")
+			
+			return TokenInfo{
+				Token:  tokens.Undefined,
+				String: string(l.currentChar),
+			}, ErrBadCharacter
 		}
 	}
 
@@ -270,6 +268,7 @@ func (l *lexer) Lex() (TokenInfo, error) {
 
 func (l *lexer) next() {
 	l.currentChar = l.nextChar
+
 	var err error
 	if l.nextChar, _, err = l.source.ReadRune(); err != nil {
 		l.nextChar = 0
@@ -448,7 +447,7 @@ func (l *lexer) readNumber() (TokenInfo, error) {
 
 		val, err := strconv.ParseUint(str, 16, 64)
 		if err != nil {
-			panic(err)
+			panic(err) // TODO
 		}
 
 		return TokenInfo{
@@ -471,7 +470,7 @@ func (l *lexer) readNumber() (TokenInfo, error) {
 
 		val, err := strconv.ParseUint(str, 8, 64)
 		if err != nil {
-			panic(err)
+			panic(err) // TODO
 		}
 
 		return TokenInfo{
