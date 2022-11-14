@@ -83,6 +83,6 @@ func main() {
 			break
 		}
 
-		fmt.Printf("type=%3d, s=%q, i=%d, f=%f\n", uint(token.Token), token.String, token.Integer, token.Float)
+		fmt.Printf("type=%s, s=%q, i=%d, f=%f\n", token.Token, token.String, token.Integer, token.Float)
 	}
 }
