@@ -4,8 +4,8 @@ import (
 	"io"
 	"log"
 
-	"github.com/SMemsky/go-squirrel/compiler/lexer"
-	"github.com/SMemsky/go-squirrel/compiler/lexer/tokens"
+	"github.com/dexter3k/go-squirrel/compiler/lexer"
+	"github.com/dexter3k/go-squirrel/compiler/lexer/tokens"
 )
 
 type compiler struct {

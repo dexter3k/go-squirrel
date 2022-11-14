@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SMemsky/go-squirrel/compiler"
-	"github.com/SMemsky/go-squirrel/compiler/lexer"
+	"github.com/dexter3k/go-squirrel/compiler"
+	"github.com/dexter3k/go-squirrel/compiler/lexer"
 )
 
 const programSource = `

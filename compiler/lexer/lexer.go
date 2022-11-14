@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/SMemsky/go-squirrel/compiler/lexer/tokens"
+	"github.com/dexter3k/go-squirrel/compiler/lexer/tokens"
 )
 
 var (

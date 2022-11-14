@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	sq "github.com/SMemsky/go-squirrel"
+	sq "github.com/dexter3k/go-squirrel"
 )
 
 func main() {
