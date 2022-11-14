@@ -1,7 +1,0 @@
-package sqvm
-
-import ()
-
-var (
-    // ...
-)

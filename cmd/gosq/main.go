@@ -1,9 +1,19 @@
 package main
 
 import (
-    "fmt"
+    "github.com/dexter3k/go-squirrel/sqvm"
 )
 
 func main() {
-    fmt.Println("Hello, world!")
+    sq := sqvm.Open(1024)
+    defer sq.Close()
+
+    sq.SetPrintFunc(
+        func(vm *sqvm.VM, format string, args ...any){
+        },
+        func(vm *sqvm.VM, format string, args ...any){
+        },
+    )
+
+    sq.PushRootTable()
 }
