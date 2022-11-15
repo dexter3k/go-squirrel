@@ -57,7 +57,7 @@ func (vm *VM) PushNull() {
 }
 
 func (vm *VM) GetType(idx int) sq.ObjectType {
-	panic("not implemented")
+	return sq.TypeNull
 }
 
 func (vm *VM) GetString(idx int) string {
@@ -89,4 +89,8 @@ func (vm *VM) Cmp() int64 {
 }
 
 func (vm *VM) PushRootTable() {
+}
+
+func (vm *VM) Call(nArgs int, pushResult, raiseError bool) error {
+	return nil
 }

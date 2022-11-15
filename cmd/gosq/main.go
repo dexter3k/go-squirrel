@@ -3,8 +3,11 @@ package main
 import (
     "flag"
     "fmt"
+    "os"
 
+    "github.com/dexter3k/go-squirrel/sq"
     "github.com/dexter3k/go-squirrel/sqvm"
+    "github.com/dexter3k/go-squirrel/compiler"
 )
 
 var (
@@ -19,32 +22,69 @@ func init() {
     flag.Parse()
 }
 
-func main() {
-    if *showVersionInfo {
-        fmt.Printf("go-squirrel wip\n")
-        return
+func runFile(vm *sqvm.VM, filename string, args []string) int {
+    f, err := os.Open(filename)
+    if err != nil {
+        fmt.Printf("Unable to open %q: %w\n", filename, err)
+        return 1
+    }
+    defer f.Close()
+
+    // Compiler pushes the resulting closure onto the vm stack
+    if err := compiler.Compile(vm, filename, f); err != nil {
+        fmt.Printf("Unable to compile file %q: %w\n", filename, err)
+        return 1
     }
 
-    sq := sqvm.Open(1024)
-    defer sq.Close()
+    // Push the args
+    vm.PushRootTable() // root table as the local space of the script
+    for _, arg := range args {
+        vm.PushString(arg)
+    }
 
-    sq.SetPrintFunc(
+    // Perform the call
+    if err := vm.Call(1 + len(args), true, true); err != nil {
+        fmt.Printf("Call failed with err %w\n", err)
+        return 1
+    }
+
+    // Expect an integer return type
+    retType := vm.GetType(-1)
+    if retType == sq.TypeInteger {
+        return int(vm.GetInteger(-1))
+    }
+
+    return 0
+}
+
+func main() {
+    os.Exit(mainWithCode())
+}
+
+func mainWithCode() int {
+    if *showVersionInfo {
+        fmt.Printf("go-squirrel wip\n")
+        return 0
+    }
+
+    vm := sqvm.Open(1024)
+    defer vm.Close()
+
+    vm.SetPrintFunc(
         func(vm *sqvm.VM, format string, args ...any){
         },
         func(vm *sqvm.VM, format string, args ...any){
         },
     )
 
-    sq.PushRootTable()
-
+    vm.PushRootTable()
     // Register libraries
-
     // Register error handlers
 
     if len(flag.Args()) == 0 {
         fmt.Printf("Interpreter mode is not yet implemented")
-        return
+        return 1
     } else {
-        // Execute the file...
+        return runFile(vm, flag.Args()[0], flag.Args()[1:])
     }
 }

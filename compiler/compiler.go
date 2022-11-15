@@ -4,9 +4,14 @@ import (
 	"io"
 	"log"
 
+	"github.com/dexter3k/go-squirrel/sqvm"
 	"github.com/dexter3k/go-squirrel/compiler/lexer"
 	"github.com/dexter3k/go-squirrel/compiler/lexer/tokens"
 )
+
+func Compile(vm *sqvm.VM, filename string, r io.Reader) error {
+	return nil
+}
 
 type compiler struct {
 	lexer lexer.Lexer
