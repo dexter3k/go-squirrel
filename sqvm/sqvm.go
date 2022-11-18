@@ -1,9 +1,5 @@
 package sqvm
 
-import (
-	"github.com/dexter3k/go-squirrel/sq"
-)
-
 type PrintFunc func(vm *VM, format string, args ...any)
 
 type VM struct {
@@ -56,8 +52,8 @@ func (vm *VM) PushBool(value bool) {
 func (vm *VM) PushNull() {
 }
 
-func (vm *VM) GetType(idx int) sq.ObjectType {
-	return sq.TypeNull
+func (vm *VM) GetType(idx int) ObjectType {
+	return TypeNull
 }
 
 func (vm *VM) GetString(idx int) string {

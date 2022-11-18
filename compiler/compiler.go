@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"io"
 	"log"
 
@@ -9,12 +10,15 @@ import (
 	"github.com/dexter3k/go-squirrel/compiler/lexer/tokens"
 )
 
-func Compile(vm *sqvm.VM, filename string, r io.Reader) error {
-	return nil
+// Compile the code from reader and push resulting closure onto vm stack.
+func Compile(vm *sqvm.VM, filename string, r io.Reader) (*sqvm.FuncProto, error) {
+	return NewCompiler(r).Compile()
 }
 
 type compiler struct {
 	lexer lexer.Lexer
+
+	f *state
 
 	token     tokens.Token
 	tokenInfo lexer.TokenInfo
@@ -27,81 +31,113 @@ func NewCompiler(rr io.Reader) *compiler {
 	}
 }
 
-func (c *compiler) Compile() {
+func (c *compiler) Compile() (*sqvm.FuncProto, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(c.token)
 			log.Println("Recovered from:", r)
 		}
 	}()
+
+	// Create root function definition with args "this" and "vargv"
+	c.f = newState()
+
 	c.lex()
+
 	for c.token != 0 {
 		c.statement()
+
 		if c.lastToken != '}' && c.lastToken != ';' {
 			c.optionalSemicolon()
 		}
 	}
+
+	// Return the built function prototype
+	return c.f.makeFuncProto()
 }
 
 func (c *compiler) lex() {
-	repeat := true
-	for repeat {
+	for true {
 		c.lastToken = c.token
+
 		var err error
 		c.tokenInfo, err = c.lexer.Lex()
 		c.token = c.tokenInfo.Token
 		if err != nil {
 			panic(err)
 		}
-		repeat = c.token == '\n'
+		if c.token != '\n' {
+			break
+		}
 	}
 }
 
 func (c *compiler) statement() {
-	c.commaExpression()
-	// pop result of unused expression
+	switch c.token {
+	case ';':
+		c.lex()
+	default:
+		c.commaExpression()
+		c.f.popTarget()
+	}
 }
 
 func (c *compiler) commaExpression() {
 	c.expression()
+
 	for c.token == ',' {
 		c.lex()
+
+		// Discard result for the last expression
+		c.f.popTarget()
+
 		c.expression()
-		// pop result of last expression
 	}
-	// result of first expression always stays on stack and gets returned
 }
 
 func (c *compiler) expression() {
 	c.prefixedExpression()
 }
 
-func (c *compiler) prefixedExpression() {
-	c.factor()
+func (c *compiler) prefixedExpression() error {
+	if err := c.factor(); err != nil {
+		return err
+	}
+
 	for {
 		switch c.token {
 		case '(':
 			c.lex()
 			c.functionCallArgs()
 		default:
-			return
+			return nil
 		}
 	}
 }
 
-func (c *compiler) factor() {
+func (c *compiler) factor() error {
 	switch c.token {
 	case tokens.Identifier:
+		id := c.f.makeString(c.tokenInfo.String)
+		fmt.Printf("factor: identifier %d->%q\n", id, c.tokenInfo.String)
 		c.lex()
 	case tokens.StringLiteral:
+		fmt.Printf("factor: string\n")
+
 		c.lex()
 	case tokens.Integer:
+		fmt.Printf("factor: integer\n")
+
 		c.lex()
 	case tokens.Float:
+		fmt.Printf("factor: float\n")
+
 		c.lex()
 	default:
-		panic(ErrExpectExpression)
+		return ErrExpectExpression
 	}
+
+	return nil
 }
 
 func (c *compiler) functionCallArgs() {
@@ -122,6 +158,7 @@ func (c *compiler) optionalSemicolon() {
 		c.lex()
 		return
 	}
+
 	if !c.isEndOfStatement() {
 		panic(ErrExpectStatementEnd)
 	}

@@ -5,7 +5,6 @@ import (
     "fmt"
     "os"
 
-    "github.com/dexter3k/go-squirrel/sq"
     "github.com/dexter3k/go-squirrel/sqvm"
     "github.com/dexter3k/go-squirrel/compiler"
 )
@@ -50,7 +49,7 @@ func runFile(vm *sqvm.VM, filename string, args []string) int {
 
     // Expect an integer return type
     retType := vm.GetType(-1)
-    if retType == sq.TypeInteger {
+    if retType == sqvm.TypeInteger {
         return int(vm.GetInteger(-1))
     }
 

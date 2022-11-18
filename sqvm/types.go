@@ -1,4 +1,4 @@
-package sq
+package sqvm
 
 type ObjectType int
 
@@ -19,3 +19,6 @@ const (
 	TypeClass
 	TypeWeakRef
 )
+
+type FuncProto struct {
+}
